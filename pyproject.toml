@@ -1,0 +1,18 @@
+[project]
+name = "modsfc"
+version = "0.0.1"
+description = "Simulation of modular stock/flow consistent models"
+readme = "README.md"
+license = { file = "LICENSE.txt" }
+keywords = [ "economics", "simulation","stock flow consistent" ]
+authors = [
+    { name = "Justin Polchlopek" }
+]
+dependencies = [
+    "networkx"
+]
+requires-python = ">=3.7"
+
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
