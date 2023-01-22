@@ -1,1 +1,4 @@
-__all__ = [ 'model', 'channel' ]
+from .model import Model
+from .actor import Actor
+
+__all__ = [ 'Model', 'Actor' ]

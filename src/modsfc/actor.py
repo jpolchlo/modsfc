@@ -1,11 +1,11 @@
 import abc
-from .executor import Executor
+from .model import Model
 
 __all__ = ['Actor']
 
 class Actor(metaclass=abc.ABCMeta):
     """Abstract base class for a model component"""
-    ## Form cribbed from https://realpython.com/python-interface/
+    ## Cribbed from https://realpython.com/python-interface/
 
     @classmethod
     def __subclasshook__(cls, subclass):
