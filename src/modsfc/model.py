@@ -1,17 +1,20 @@
 import asyncio as aio
 from dataclasses import dataclass
+import logging
 import networkx as nx
+
+from .channel import Channel
 
 __all__ = [ 'Model' ]
 
 class Node:
     pass
 
-@dataclass
+@dataclass(frozen=True)
 class ChannelNode(Node):
     name: str
 
-@dataclass
+@dataclass(frozen=True)
 class TaskNode(Node):
     name: str
 
@@ -48,20 +51,20 @@ class Model:
                 self.channels[name] = Channel(name)
                 self.graph.add_node(chan_node)
 
-            self.graph.add_edge(chan_node, task_node)
+            self.graph.add_edge(task_node, chan_node)
 
 
     def validate(self):
         g = self.graph
-        tasks = list(filter(lambda n: isinstance(n, TaskNode)))
-        channels = list(filter(lambda n: isinstance(n, ChannelNode)))
+        tasks = list(filter(lambda n: isinstance(n, TaskNode), g.nodes))
+        channels = list(filter(lambda n: isinstance(n, ChannelNode), g.nodes))
 
         try:
             cyc = nx.cycles.find_cycle(g)
         except nx.NetworkXNoCycle:
             pass
         else:
-            logger.error(f"Found dependency cycle: {cyc}")
+            self.logger.error(f"Found dependency cycle: {cyc}")
             self.valid = False
             return False
 
@@ -71,47 +74,47 @@ class Model:
             indeg = g.in_degree(cn)
             outdeg = g.out_degree(cn)
             if indeg == 0:
-                logger.error(f"Channel {c.name} is not being filled")
+                self.logger.error(f"Channel {c.name} is not being filled")
                 failed = True
             if indeg > 1:
                 parents = list(g.pred[cn])
-                logger.error(f"Channel {c.name} has multiple writers: {parents}")
+                self.logger.error(f"Channel {c.name} has multiple writers: {parents}")
                 failed = True
             if outdeg == 0:
-                logger.error(f"Channel {c.name} is not being consumed")
+                self.logger.error(f"Channel {c.name} is not being consumed")
                 failed = True
             if outdeg > 1:
                 children = list(g.succ[cn])
-                logger.error(f"Channel {c.name} has multiple readers: {children}")
+                self.logger.error(f"Channel {c.name} has multiple readers: {children}")
                 failed = True
 
         self.valid = not failed
         return not failed
 
 
-    async def __execute_task(fn, inputs, outputs):
+    async def __execute_task(self, fn, inputs, outputs):
         while True:
             await self.tick.wait()
             values = []
             for chan in inputs:
-                logger.debug(f"Waiting for input on channel {chan}")
+                self.logger.debug(f"Waiting for input on channel {chan}")
                 value = await self.channels[chan].pop(True)
-                logger.debug(f"Receive value {value} on channel {chan}")
+                self.logger.debug(f"Receive value {value} on channel {chan}")
                 values.append(value)
             results = fn(*values)
             for (result, chan) in zip(results, outputs):
-                logger.info(f"Placing output {result} on channel {chan}")
+                self.logger.info(f"Placing output {result} on channel {chan}")
                 await self.channels[chan].push(result)
-            logger.debug(f"Pausing ({self.sync.n_waiting})")
+            self.logger.debug(f"Pausing ({self.sync.n_waiting})")
             await self.sync.wait()
             await aio.sleep(0)
 
 
-    async def execute(t_init, t_end, dt=1, monitor_fn=None):
+    async def execute(self, t_init, t_end, dt=1, monitor_fn=None):
         self.tick = aio.Event()
-        self.sync = aio.Barrier(n_nodes + 1)
+        self.sync = aio.Barrier(self.n_nodes + 1)
 
-        jobs = [__execute_task(*args) for args in self.units]
+        jobs = [self.__execute_task(*args) for args in self.units]
 
         results = []
         t = t_init
@@ -121,7 +124,7 @@ class Model:
             while t < t_end:
                 self.tick.set()
                 await self.sync.wait()
-                selt.tick.clear()
+                self.tick.clear()
                 results.append( monitor_fn(t) )
 
                 t += dt
