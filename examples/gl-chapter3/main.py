@@ -17,9 +17,16 @@ async def main():
 
     assert model.validate()
 
-    result = await model.execute(0, 30, monitor_fn=lambda t: (t, consumer.cash, government.debt))
-    for r in result:
-        print(r)
+    result = await model.execute(0, 40, monitor_fn=lambda t: (t, consumer.cash, government.debt))
+    taxes = model.get_channel_log('tax')
+    consumption = model.get_channel_log('consumption')
+    income = model.get_channel_log('income')
+
+    print("Time | Debt/Wealth | Taxes       | Consumption | Income      ")
+    print("-----+-------------+-------------+-------------+-------------")
+    for ((t, cash, debt), tax), (cons, inc) in zip(zip(result, taxes), zip(consumption, income)):
+        assert abs(cash - debt) < 1e-8
+        print(f"{t:<5}| {cash:<11,.2f} | {tax:<11,.2f} | {cons:<11,.2f} | {inc:<11,.2f}")
 
 if __name__ == '__main__':
     aio.run(main())
