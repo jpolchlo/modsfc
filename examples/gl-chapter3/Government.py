@@ -6,18 +6,16 @@ class Government(Actor):
         self.tax_rate = tax_rate
         self.debt = 0
 
+    @Government.action('declare_tax_rate', [], ['tax_rate'])
     def declare_tax_rate(self):
         return [self.tax_rate]
 
+    @Government.action('spend', [], ['govt_spending'])
     def spend(self):
         self.debt += self.expenditures
         return [self.expenditures]
 
+    @Government.action('receive_taxes', ['tax'], [])
     def receive_taxes(self, tax_payment):
         self.debt -= tax_payment
         return []
-
-    def register(self, model: Model):
-        model.register_task('declare_tax_rate', self.declare_tax_rate, [], ['tax_rate'])
-        model.register_task('spend', self.spend, [], ['govt_spending'])
-        model.register_task('receive_taxes', self.receive_taxes, ['tax'], [])
